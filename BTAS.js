@@ -6,8 +6,8 @@
 // @description  Blue Team Assistance Script for SH
 // @author       Barry Y Yang; Jack SA Chen; Xingyu X Zhou
 // @license      Apache-2.0
-// @updateURL    https://greasyfork.org/scripts/463908-btas/code/BTAS.user.js
-// @downloadURL  https://greasyfork.org/scripts/463908-btas/code/BTAS.user.js
+// @updateURL    https://greasyfork.org/scripts/471016-btas/code/BTAS.user.js
+// @downloadURL  https://greasyfork.org/scripts/471016-btas/code/BTAS.user.js
 // @match        https://www.pwcmanagedsecurityservices.cn/*
 // @icon         https://www.google.com/s2/favicons?domain=pwchk.com
 // @require      https://code.jquery.com/jquery-3.6.4.min.js
