@@ -11,15 +11,12 @@
 // @match        https://www.pwcmanagedsecurityservices.cn/*
 // @icon         https://www.google.com/s2/favicons?domain=pwchk.com
 // @require      https://code.jquery.com/jquery-3.6.4.min.js
+// @run-at       document-end
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // ==/UserScript==
 
 var $ = window.jQuery;
-
-const LogSourceDomain = $('#customfield_10333-val').text().trim();
-const LogSource = $('#customfield_10310-val').text().trim();
-const rawLog = $('#field-customfield_10321 > div:first-child > div:nth-child(2)').text().trim().split('\n');
 
 /**
  * This function creates and displays a flag using AJS.flag function
@@ -43,6 +40,7 @@ function showFlag(type, title, body, close) {
  */
 function registerSearchMenu() {
     console.log('#### Code registerSearchMenu run ####');
+    const LogSourceDomain = $('#customfield_10333-val').text().trim() || '*';
     const searchEngines = [
         {
             name: 'Jira',
@@ -51,6 +49,7 @@ function registerSearchMenu() {
                 '%22Log%20Source%20Domain%22%20~%20%22%D%22%20' +
                 'ORDER%20BY%20created%20DESC'
         },
+        { name: '微步', url: 'https://s.threatbook.com/report/file/%s' },
         { name: 'VT', url: 'https://www.virustotal.com/gui/search/%s' },
         { name: 'AbuseIPDB', url: 'https://www.abuseipdb.com/check/%s' }
     ];
@@ -89,7 +88,7 @@ function addButton(id, text, onClick) {
  * Creates three buttons on a JIRA issue page to handle Cortex XDR alerts
  * The buttons allow users to generate a description of the alerts, open the alert card page and timeline page
  */
-function cortexAlertHandler() {
+function cortexAlertHandler(rawLog, LogSourceDomain) {
     console.log('#### Code cortexAlertHandler run ####');
     /**
      * Extracts the log information and organization name from the current JIRA issue page
@@ -99,9 +98,9 @@ function cortexAlertHandler() {
     const orgDict = {};
     function extractLog(orgDict) {
         const orgNavigator = orgDict[LogSourceDomain];
-        return { LogSourceDomain, orgNavigator, rawLog };
+        return orgNavigator;
     }
-    //const { LogSourceDomain, orgNavigator, rawLog } = extractLog(orgDict);
+    const orgNavigator = extractLog(orgDict);
 
     /**
      * Parse the relevant information from the raw log data
@@ -256,7 +255,7 @@ function cortexAlertHandler() {
     addButton('openTimeline', 'Timeline', openTimeline);
 }
 
-function MDEAlertHandler() {
+function MDEAlertHandler(rawLog) {
     console.log('#### Code MDEAlertHandler run ####');
 
     function parseLog(rawLog) {
@@ -293,7 +292,6 @@ function MDEAlertHandler() {
         return alertInfo;
     }
     const alertInfo = parseLog(rawLog);
-    // console.info(`alertInfo: ${alertInfo}`);
 
     function generateDescription() {
         const alertDescriptions = [];
@@ -319,6 +317,63 @@ function MDEAlertHandler() {
     addButton('openMDE', 'MDE', openMDE);
 }
 
+function WatsonsAlertHandler(rawLog) {
+    console.log('#### Code WatsonsAlertHandler run ####');
+
+    function parselog(rawLog) {
+        const alertInfo = rawLog.reduce((acc, log) => {
+            const watsons_log = {};
+            try {
+                const log_obj = log.split('\t');
+                log_obj.forEach((log_item) => {
+                    try {
+                        const log_comma = log_item.split(',');
+                        log_comma.forEach((log_dict) => {
+                            try {
+                                let [key, value] = log_dict.split('=');
+                                key = key.trim();
+                                value = value.trim().replace(/'/g, '');
+                                watsons_log[key] = value;
+                            } catch (error) {
+                                console.error(`Error: ${error.message}`);
+                            }
+                        });
+                    } catch (error) {
+                        console.error(`Error: ${error.message}`);
+                    }
+                });
+                acc.push({
+                    alertId: watsons_log.alertId
+                });
+            } catch (error) {
+                console.error(`Error: ${error.message}`);
+            }
+            return acc;
+        }, []);
+        return alertInfo;
+    }
+
+    const alertInfo = parselog(rawLog);
+
+    function generateDescription(alertInfo) {}
+
+    function openMDE() {
+        let MDEURL = '';
+        for (const info of alertInfo) {
+            const { alertId } = info;
+            if (alertId) {
+                const alertId_list = alertId.split(' ');
+                alertId_list.forEach((alertId) => {
+                    MDEURL += `https://security.microsoft.com/alerts/${alertId}\n`;
+                });
+            }
+        }
+        showFlag('info', 'MDE URL:', `${MDEURL}`, 'manual');
+    }
+    addButton('generateDescription', 'Description', generateDescription);
+    addButton('openMDE', 'MDE', openMDE);
+}
+
 (function () {
     'use strict';
 
@@ -326,15 +381,20 @@ function MDEAlertHandler() {
 
     // Issue page: Alert Handler
     setInterval(() => {
+        const LogSourceDomain = $('#customfield_10333-val').text().trim();
+        const LogSource = $('#customfield_10310-val').text().trim();
+        const rawLog = $('#field-customfield_10321 > div:first-child > div:nth-child(2)').text().trim().split('\n');
         if ($('#issue-content').length && !$('#generateDescription').length) {
             console.log('#### Code Issue page: Alert Handler ####');
-            const handlers = {
+            const mss_handlers = {
                 'cortex_xdr': cortexAlertHandler,
                 'Wazuh-MDE': MDEAlertHandler
             };
-            const handler = handlers[LogSource];
-            if (handler) {
-                handler();
+            const mss_handler = mss_handlers[LogSource];
+            if (mss_handler) {
+                mss_handler(rawLog, LogSourceDomain);
+            } else if (LogSourceDomain == 'WATSONS') {
+                WatsonsAlertHandler(rawLog);
             }
         }
     }, 3000);
