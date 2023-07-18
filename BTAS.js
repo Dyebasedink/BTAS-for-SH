@@ -2,7 +2,7 @@
 // @name         BTAS
 // @namespace    https://github.com/Dyebasedink/BTAS-for-SH
 // @homepageURL  https://github.com/Dyebasedink/BTAS-for-SH
-// @version      1.0.0
+// @version      1.0.2
 // @description  Blue Team Assistance Script for SH
 // @author       Barry Y Yang; Jack SA Chen; Xingyu X Zhou
 // @license      Apache-2.0
