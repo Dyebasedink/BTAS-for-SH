@@ -40,23 +40,27 @@ function showFlag(type, title, body, close) {
  */
 function registerSearchMenu() {
     console.log('#### Code registerSearchMenu run ####');
+
     const LogSourceDomain = $('#customfield_10333-val').text().trim() || '*';
+
+    // Get Wazuh Link from page or default URL
+    let KibanaLink = getKibanaLink();
+
     const searchEngines = [
         {
             name: 'Jira',
-            url:
-                'https://www.pwcmanagedsecurityservices.cn/issues/?jql=text%20~%20%22%s%22%20AND%20' +
-                '%22Log%20Source%20Domain%22%20~%20%22%D%22%20' +
-                'ORDER%20BY%20created%20DESC'
+            url: 'https://www.pwcmanagedsecurityservices.cn/issues/?jql=text%20~%20%22%s%22%20AND%20%22Log%20Source%20Domain%22%20~%20%22%D%22%20ORDER%20BY%20created%20DESC'
         },
+        { name: 'Wazuh', url: KibanaLink },
         { name: '微步', url: 'https://s.threatbook.com/report/file/%s' },
         { name: 'VT', url: 'https://www.virustotal.com/gui/search/%s' },
         { name: 'AbuseIPDB', url: 'https://www.abuseipdb.com/check/%s' }
     ];
+
     searchEngines.forEach((engine) => {
         GM_registerMenuCommand(engine.name, () => {
             const selectedText = window.getSelection().toString();
-            const searchURL = engine.url.replace('%s', selectedText).replace('%D', LogSourceDomain);
+            const searchURL = getSearchURL(engine.url, selectedText, LogSourceDomain);
             if (selectedText.length === 0) {
                 showFlag('error', 'No text selected', 'Please select some text and try again', 'auto');
             } else {
@@ -64,6 +68,29 @@ function registerSearchMenu() {
             }
         });
     });
+
+    function getKibanaLink() {
+        const defaultKibanaLink =
+            "https://10.10.1.101:5601/app/discover#/view/8aa8e860-0d55-11ed-b3df-55219e7ff873?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-1d,to:now))&_a=(columns:!(),filters:!(),index:'wazuh-alerts-*',interval:auto,query:(language:kuery,query:'*%s*'),sort:!(!(timestamp,desc)))";
+
+        const KibanaLinkElement = $('#field-customfield_10307 > div:nth-child(1) > div:nth-child(2) > a:nth-child(1)');
+        if (KibanaLinkElement.length > 0) {
+            const KibanaLink = KibanaLinkElement.attr('href');
+            return (
+                KibanaLink.replace('/app/kibana#/discover', '/app/discover#/view').replace(
+                    /time:\([^)]+\)/,
+                    'time:(from:now-1d,to:now)'
+                ) +
+                "&_a=(columns:!(),filters:!(),index:'wazuh-alerts-*',interval:auto,query:(language:kuery,query:'*%s*'),sort:!(!(timestamp,desc)))"
+            );
+        } else {
+            return defaultKibanaLink;
+        }
+    }
+
+    function getSearchURL(urlTemplate, selectedText, logSourceDomain) {
+        return urlTemplate.replace('%s', selectedText).replace('%D', logSourceDomain);
+    }
 }
 
 /**
