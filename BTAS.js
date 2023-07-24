@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         BTAS
+// @name         BTAS-SH
 // @namespace    https://github.com/Dyebasedink/BTAS-for-SH
 // @homepageURL  https://github.com/Dyebasedink/BTAS-for-SH
 // @version      1.0.5
