@@ -43,24 +43,33 @@ function registerSearchMenu() {
 
     const LogSourceDomain = $('#customfield_10333-val').text().trim() || '*';
 
-    // Get Wazuh Link from page or default URL
-    let KibanaLink = getKibanaLink();
-
     const searchEngines = [
-        {
+        () => ({
             name: 'Jira',
             url: 'https://www.pwcmanagedsecurityservices.cn/issues/?jql=text%20~%20%22%s%22%20AND%20%22Log%20Source%20Domain%22%20~%20%22%D%22%20ORDER%20BY%20created%20DESC'
-        },
-        { name: 'Wazuh', url: KibanaLink },
-        { name: '微步', url: 'https://s.threatbook.com/report/file/%s' },
-        { name: 'VT', url: 'https://www.virustotal.com/gui/search/%s' },
-        { name: 'AbuseIPDB', url: 'https://www.abuseipdb.com/check/%s' }
+        }),
+        () => ({
+            name: 'Wazuh',
+            url: getKibanaLink()
+        }),
+        () => ({
+            name: 'ThreatBook',
+            url: getThreatBookLink(window.getSelection().toString())
+        }),
+        () => ({
+            name: 'VT',
+            url: 'https://www.virustotal.com/gui/search/%s'
+        }),
+        () => ({
+            name: 'AbuseIPDB',
+            url: 'https://www.abuseipdb.com/check/%s'
+        })
     ];
 
-    searchEngines.forEach((engine) => {
-        GM_registerMenuCommand(engine.name, () => {
+    searchEngines.forEach((getEngine) => {
+        GM_registerMenuCommand(getEngine().name, () => {
             const selectedText = window.getSelection().toString();
-            const searchURL = getSearchURL(engine.url, selectedText, LogSourceDomain);
+            const searchURL = getSearchURL(getEngine().url, selectedText, LogSourceDomain);
             if (selectedText.length === 0) {
                 showFlag('error', 'No text selected', 'Please select some text and try again', 'auto');
             } else {
@@ -85,6 +94,19 @@ function registerSearchMenu() {
             );
         } else {
             return defaultKibanaLink;
+        }
+    }
+
+    function getThreatBookLink(selectedText) {
+        if (!selectedText.includes('.')) {
+            // match Hash
+            return 'https://s.threatbook.com/report/file/%s';
+        } else if (selectedText.match(/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/)) {
+            // match IP
+            return 'https://x.threatbook.com/v5/ip/%s';
+        } else {
+            // match Domain
+            return 'https://x.threatbook.com/v5/domain/%s';
         }
     }
 
