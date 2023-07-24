@@ -50,7 +50,7 @@ function registerSearchMenu() {
         }),
         () => ({
             name: 'Wazuh',
-            url: getKibanaLink()
+            url: getKibanaLink(LogSourceDomain)
         }),
         () => ({
             name: 'ThreatBook',
@@ -78,23 +78,20 @@ function registerSearchMenu() {
         });
     });
 
-    function getKibanaLink() {
-        const defaultKibanaLink =
-            "https://10.10.1.101:5601/app/discover#/view/8aa8e860-0d55-11ed-b3df-55219e7ff873?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-1d,to:now))&_a=(columns:!(),filters:!(),index:'wazuh-alerts-*',interval:auto,query:(language:kuery,query:'*%s*'),sort:!(!(timestamp,desc)))";
+    function getKibanaLink(LogSourceDomain) {
+        const spacenames = {
+            aeon: '/s/aeon',
+            cjlr: '/s/cjlr',
+            ctfj: '/s/ctfj',
+            hlpl: '/s/hlpl',
+            kerry: '/s/kerry',
+            lsh: '/s/lsh',
+            spac: '/s/spac'
+        };
 
-        const KibanaLinkElement = $('#field-customfield_10307 > div:nth-child(1) > div:nth-child(2) > a:nth-child(1)');
-        if (KibanaLinkElement.length > 0) {
-            const KibanaLink = KibanaLinkElement.attr('href');
-            return (
-                KibanaLink.replace('/app/kibana#/discover', '/app/discover#/view').replace(
-                    /time:\([^)]+\)/,
-                    'time:(from:now-1d,to:now)'
-                ) +
-                "&_a=(columns:!(),filters:!(),index:'wazuh-alerts-*',interval:auto,query:(language:kuery,query:'*%s*'),sort:!(!(timestamp,desc)))"
-            );
-        } else {
-            return defaultKibanaLink;
-        }
+        const spacename = Object.keys(spacenames).find((name) => LogSourceDomain.includes(name)) || '';
+        const kibanalink = `https://10.10.1.101:5601${spacenames[spacename]}/app/discover#/?_g=(filters:!(),refreshInterval:(pause:!t,value:0),time:(from:now-1d,to:now))&_a=(columns:!(),filters:!(),index:'wazuh-alerts-*',interval:auto,query:(language:kuery,query:'*%s*'),sort:!(!(timestamp,desc)))`;
+        return kibanalink;
     }
 
     function getThreatBookLink(selectedText) {
