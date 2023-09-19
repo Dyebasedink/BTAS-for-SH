@@ -420,27 +420,83 @@ function WatsonsAlertHandler(rawLog) {
     addButton('openMDE', 'MDE', openMDE);
 }
 
+function GtsAlertHandler(rawLog) {
+    function parselog(rawLog) {
+        const alertInfo = rawLog.reduce((acc, log) => {
+            const gts_log = {};
+            try {
+                const log_obj = log.split('\t');
+                log_obj.forEach((log_item) => {
+                    try {
+                        const log_comma = log_item.split(',');
+                        log_comma.forEach((log_dict) => {
+                            try {
+                                let [key, value] = log_dict.split('=');
+                                key = key.trim();
+                                value = value.trim().replace(/'/g, '');
+                                gts_log[key] = value;
+                            } catch (error) {
+                                console.error(`Error: ${error.message}`);
+                            }
+                        });
+                    } catch (error) {
+                        console.error(`Error: ${error.message}`);
+                    }
+                });
+                acc.push({
+                    alertId: gts_log['properties.AlertId']
+                });
+            } catch (error) {
+                console.error(`Error: ${error.message}`);
+            }
+            return acc;
+        }, []);
+        return alertInfo;
+    }
+
+    const alertInfo = parselog(rawLog);
+
+    function openMDE() {
+        let MDEURL = '';
+        for (const info of alertInfo) {
+            const { alertId } = info;
+            if (alertId) {
+                MDEURL += `https://security.microsoft.com/alerts/${alertId}\n`;
+            }
+        }
+        showFlag('info', 'MDE URL:', `${MDEURL}`, 'manual');
+    }
+
+    addButton('openMDE', 'MDE', openMDE);
+}
+
 (function () {
     'use strict';
 
     registerSearchMenu();
 
     // Issue page: Alert Handler
-    setInterval(() => {
+    setTimeout(() => {
         const LogSourceDomain = $('#customfield_10333-val').text().trim();
         const LogSource = $('#customfield_10310-val').text().trim();
         const rawLog = $('#field-customfield_10321 > div:first-child > div:nth-child(2)').text().trim().split('\n');
         if ($('#issue-content').length && !$('#generateDescription').length) {
             console.log('#### Code Issue page: Alert Handler ####');
-            const mss_handlers = {
+            const mss_logsource_handlers = {
                 'cortex_xdr': cortexAlertHandler,
                 'Wazuh-MDE': MDEAlertHandler
             };
-            const mss_handler = mss_handlers[LogSource];
-            if (mss_handler) {
-                mss_handler(rawLog, LogSourceDomain);
-            } else if (LogSourceDomain == 'WATSONS') {
-                WatsonsAlertHandler(rawLog);
+            const mss_logsourcedomain_handlers = {
+                WATSONS: WatsonsAlertHandler,
+                PwCGTS: GtsAlertHandler
+            };
+            const mss_logsource_handler = mss_logsource_handlers[LogSource];
+            const mss_logsourcedomain_handler = mss_logsourcedomain_handlers[LogSourceDomain];
+            if (mss_logsource_handler) {
+                mss_logsource_handler(rawLog, LogSourceDomain);
+            }
+            if (mss_logsourcedomain_handler) {
+                mss_logsourcedomain_handler(rawLog);
             }
         }
     }, 3000);
